@@ -1,0 +1,10 @@
+names:
+- CYL BODY 4JA
+- CYL HEAD 4HG
+- CYL HEAD 4JA
+- KERANJANG PISTON
+- crankshaft_4JA
+- cylinder_body_4HG
+nc: 6
+train: /content/datasets/DataSet2-2/train/images
+val: /content/datasets/DataSet2-2/valid/images
