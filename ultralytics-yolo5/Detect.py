@@ -5,15 +5,14 @@ import numpy as np
 import cv2
 
 model = torch.hub.load(os.getcwd(), 'custom', source='local', path = 'best.pt', force_reload = True)
-img = 'Valid/2.jpg'
+img = 'Valid/19.jpg'
 gambar = cv2.imread(img)
 results = model(img)
 
-Xmin= results.pandas().xyxy[0]['name'].to_numpy()
+cls = results.pandas().xyxy[0]['name'].to_numpy()
+conf = results.pandas().xyxy[0]['confidence'].to_numpy()
+print(cls)
+print(conf)
 
-print(Xmin)
-#df = pd.DataFrame(Xmin)
 
-#print(results.pandas().xyxy[0])  # img1 predictions (pandas)
-
-#2
+#2,4,5,8,13,14,19
