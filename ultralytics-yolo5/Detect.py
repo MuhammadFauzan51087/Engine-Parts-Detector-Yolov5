@@ -1,20 +1,17 @@
 import os
 import torch
-import pandas as pd
 from matplotlib import pyplot as plt
 import numpy as np
 import cv2
 
 model = torch.hub.load(os.getcwd(), 'custom', source='local', path = 'best.pt', force_reload = True)
 img = 'Valid/2.jpg'
-
+gambar = cv2.imread(img)
 results = model(img)
-import pandas as pd
 
-Xmin= results.pandas().xyxy[0]
+Xmin= results.pandas().xyxy[0]['name'].to_numpy()
 
-#print(Xmin)
-print(Xmin['name'].notna())
+print(Xmin)
 #df = pd.DataFrame(Xmin)
 
 #print(results.pandas().xyxy[0])  # img1 predictions (pandas)
