@@ -20,7 +20,7 @@ ymax = results.pandas().xyxy[0]['ymax'].to_numpy()
 
 print(cls)
 print(conf)
- 
+print(np.squeeze(results.render())) 
 cv2.imshow('YOLO', np.squeeze(results.render()))
 
 
