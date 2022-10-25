@@ -3,23 +3,29 @@ import os
 import platform
 import sys
 from pathlib import Path
-
 import torch
-
+import threading
+import subprocess
+import redis
+redis_host = "localhost"
+redis_port = 6379
+redis_password = ""
+r = redis.StrictRedis(host=redis_host, port=redis_port, password=redis_password, decode_responses=True)
+def jalankanRedis():
+    subprocess.run("redis-server", shell=True)
+t1 = threading.Thread(target=jalankanRedis)
+t1.start()
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # YOLOv5 root directory
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))  # add ROOT to PATH
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
-
 from models.common import DetectMultiBackend
 from utils.dataloaders import IMG_FORMATS, VID_FORMATS, LoadImages, LoadScreenshots, LoadStreams
 from utils.general import (LOGGER, Profile, check_file, check_img_size, check_imshow, check_requirements, colorstr, cv2,
                            increment_path, non_max_suppression, print_args, scale_boxes, strip_optimizer, xyxy2xywh)
 from utils.plots import Annotator, colors, save_one_box
 from utils.torch_utils import select_device, smart_inference_mode
-
-
 @smart_inference_mode()
 def run(
         weights=ROOT / 'best.pt',  # model path or triton URL
@@ -58,22 +64,17 @@ def run(
     screenshot = source.lower().startswith('screen')
     if is_url and is_file:
         source = check_file(source)  # download
-
     # Directories
     save_dir = increment_path(Path(project) / name, exist_ok=exist_ok)  # increment run
     (save_dir / 'labels' if save_txt else save_dir).mkdir(parents=True, exist_ok=True)  # make dir
-
     # Load model
     device = select_device(device)
     model = DetectMultiBackend(weights, device=device, dnn=dnn, data=data, fp16=half)
     stride, names, pt = model.stride, model.names, model.pt
     imgsz = check_img_size(imgsz, s=stride)  # check image size
-
     # Dataloader
     bs = 1  # batch_size
-
     dataset = LoadImages(source, img_size=imgsz, stride=stride, auto=pt, vid_stride=vid_stride)
-
     # Run inference
     model.warmup(imgsz=(1 if pt or model.triton else bs, 3, *imgsz))  # warmup
     seen, windows, dt = 0, [], (Profile(), Profile(), Profile())
@@ -84,12 +85,10 @@ def run(
             im /= 255  # 0 - 255 to 0.0 - 1.0
             if len(im.shape) == 3:
                 im = im[None]  # expand for batch dim
-
         # Inference
         with dt[1]:
             visualize = increment_path(save_dir / Path(path).stem, mkdir=True) if visualize else False
             pred = model(im, augment=augment, visualize=visualize)
-
         # NMS
         with dt[2]:
             pred = non_max_suppression(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)
@@ -110,22 +109,21 @@ def run(
                 for c in det[:, 5].unique():
                     n = (det[:, 5] == c).sum()  # detections per class
                     kelas = names[int(c)]
-                    #print(kelas)
-                    # Write results
                     for *xyxy, conf, cls in reversed(det):
                         xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
                         line = (cls, *xywh, conf)
-                        print(kelas,conf)
+        kotak = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)))
+        titik = kotak.tolist()
+        dataku = titik[0]
+        print(dataku[0:4])
+        r.set("kelas",str(kelas))
+        r.set("conf",str(conf.tolist()))
         im0 = annotator.result()
-        resize = cv2.resize(im0, (640, 640)) # Resize image to 200x200 pixel
+        resize = cv2.rectangle(im0,(int(dataku[0]-300),int(dataku[1]+300)),(int(dataku[2])+300,int(dataku[3]-300)),(0,255,0),3)
+        resize = cv2.putText(resize,(kelas+" "+str(conf.tolist())), (int(dataku[1]-30),int(dataku[0]-30)),cv2.FONT_HERSHEY_SIMPLEX,1, (0,0,255),3, cv2.LINE_AA)
+        resize = cv2.resize(resize, (640, 640)) # Resize image to 200x200 pixel
         cv2.imshow("Yolo", resize)
-        cv2.waitKey(1)  # 1 millisecond
-
-        # Print time (inference-only)
-       # LOGGER.info(f"{s}{'' if len(det) else '(no detections), '}{dt[1].dt * 1E3:.1f}ms ")
-
-    # Print results
-    #t = tuple(x.t / seen * 1E3 for x in dt)  # speeds per image
-    #LOGGER.info(f'Speed: %.1fms pre-process, %.1fms inference, %.1fms NMS per image at shape {(1, 3, *imgsz)}' % t)
+        cv2.waitKey(1)
 while True:
     run()
+subprocess.run("taskkill /F /IM redis-server.exe")
